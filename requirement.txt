@@ -1,0 +1,4 @@
+sqlite3
+google-generativeai
+thefuzz
+flask
