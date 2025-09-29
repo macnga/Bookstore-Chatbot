@@ -6,6 +6,7 @@ Database includes 2 tables Books and Orders
 
 
 INPUT: NL from users
+
 CHATBOT:
 - Query from SQL database
 - Add new order
