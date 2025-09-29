@@ -1,0 +1,6 @@
+Flask
+google-generativeai
+thefuzz
+python-Levenshtein
+gunicorn
+python-dotenv
