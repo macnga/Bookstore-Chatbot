@@ -1,10 +1,14 @@
+# chatbot_logic.py
+
 import sqlite3
 import google.generativeai as genai
 import json
 import re
+import os
 from thefuzz import process
 
-GOOGLE_API_KEY = 'AIzaSyANhdFABosnWFuiofe4S3_Jpll9MXFEkjs'
+# Lấy API key từ biến môi trường
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 genai.configure(api_key=GOOGLE_API_KEY)
 
 model = genai.GenerativeModel("models/gemini-2.5-flash")
@@ -29,6 +33,7 @@ def execute_sql_query(sql_query, params=()):
         conn.close()
         return {"error": str(e)}
 
+
 def classify_intent(user_input, chat_history):
     history_str = "\n".join([f"{msg['role']}: {msg['parts'][0]}" for msg in chat_history])
     prompt = f"""
@@ -44,7 +49,7 @@ def classify_intent(user_input, chat_history):
 
 def handle_chitchat(user_input):
     prompt = f"""
-    Bạn là một trợ lý bán sách thân thiện. 
+    Bạn là một trợ lý bán sách thân thiện.
     Hãy trả lời tin nhắn của khách hàng một cách tự nhiên và **ngắn gọn trong tối đa 2 câu**.
     Khách hàng nói: '{user_input}'
     """
@@ -76,7 +81,6 @@ Table Orders có các cột sau: order_id (INTEGER, PRIMARY KEY), customer_name 
 """
 
 def get_database_context():
-    """Lấy danh sách các tên sách và thể loại từ CSDL để làm ngữ cảnh cho LLM."""
     all_titles_res = execute_sql_query("SELECT DISTINCT title FROM Books")
     all_categories_res = execute_sql_query("SELECT DISTINCT category FROM Books")
     all_authors_res = execute_sql_query("SELECT DISTINCT author FROM Books")
@@ -84,7 +88,7 @@ def get_database_context():
     db_titles = [row[0] for row in all_titles_res.get('data', [])]
     db_authors = [row[0] for row in all_authors_res.get('data', [])]
     db_categories = [row[0] for row in all_categories_res.get('data', [])]
-    
+
     context = (
         f"DANH SÁCH TÊN SÁCH HIỆN CÓ:\n{', '.join(db_titles)}\n\n"
         f"DANH SÁCH TÁC GIẢ HIỆN CÓ:\n{', '.join(db_authors)}\n\n"
@@ -92,41 +96,30 @@ def get_database_context():
     )
     return context
 
-# Thay thế toàn bộ biến sql_prompt trong hàm handle_query_books
 def handle_query_books(user_input, chat_history):
-    ## <<< BẮT ĐẦU THAY ĐỔI
-    # Lấy ngữ cảnh từ CSDL để giúp LLM sửa lỗi chính tả
     db_context = get_database_context()
     history_str = "\n".join([f"{msg['role']}: {msg['parts'][0]}" for msg in chat_history])
 
-    # Xây dựng prompt mới với ngữ cảnh và chỉ thị rõ ràng
     sql_prompt = f"""
     Bạn là một chuyên gia SQL. Nhiệm vụ của bạn là chuyển câu hỏi của người dùng thành một câu lệnh SQL chính xác dựa trên CSDL và ngữ cảnh được cung cấp.
-    
     **QUAN TRỌNG**: Nếu thấy người dùng gõ sai chính tả một tên sách hoặc thể loại, hãy tự động sửa nó thành tên đúng nhất có trong danh sách ngữ cảnh dưới đây khi tạo câu lệnh SQL.
-
     **Ngữ cảnh từ Cơ sở dữ liệu:**
     {db_context}
-
     **Cấu trúc CSDL:**
     {DATABASE_SCHEMA}
-    
     **Lịch sử trò chuyện:**
     {history_str}
-    
     **Câu hỏi của người dùng:** "{user_input}"
-    
     **Câu lệnh SQL (chỉ trả về mã SQL):**
     """
-    ## <<< KẾT THÚC THAY ĐỔI
 
     sql_response = model.generate_content(sql_prompt)
     generated_sql = sql_response.text.replace("```sql", "").replace("```", "").strip()
     print(f"DEBUG: SQL -> {generated_sql}")
-    
+
     sql_result = execute_sql_query(generated_sql)
     print(f"DEBUG: SQL Result -> {sql_result}")
-    
+
     final_prompt = f"""
     Bạn là trợ lý bán sách. Dựa vào câu hỏi, lịch sử và kết quả SQL, hãy trả lời khách hàng một cách thân thiện và đầy đủ.
     Lịch sử: {history_str}
@@ -135,8 +128,6 @@ def handle_query_books(user_input, chat_history):
     Câu trả lời:
     """
     final_response = model.generate_content(final_prompt)
-    
-    ## <<< THAY ĐỔI DÒNG CUỐI CÙNG
     return final_response.text, sql_result
 
 def format_history_for_prompt(chat_history):
@@ -145,32 +136,25 @@ def format_history_for_prompt(chat_history):
 def handle_ordering(user_input, order_state, chat_history, last_query_result):
     formatted_last_query = "Không có"
     if last_query_result and last_query_result.get("data"):
-        # Chuyển đổi kết quả SQL thành một chuỗi dễ đọc cho LLM
         items = [dict(zip(last_query_result['column'], row)) for row in last_query_result['data']]
         formatted_last_query = json.dumps(items, ensure_ascii=False, indent=2)
 
     extract_prompt = f"""
     Bạn là một trợ lý thông minh. Nhiệm vụ của bạn là trích xuất thông tin đặt hàng từ tin nhắn của người dùng.
-
     **Ngữ cảnh bổ sung (Kết quả tra cứu gần nhất của người dùng):**
     ```json
     {formatted_last_query}
     ```
-
     **Lịch sử hội thoại:**
     {format_history_for_prompt(chat_history)}
-
     **Tin nhắn mới nhất của người dùng:** "{user_input}"
-
     **YÊU CẦU:**
     Dựa vào tin nhắn mới nhất, lịch sử và **ngữ cảnh bổ sung** trên, trích xuất các thông tin sau và trả về dưới dạng JSON:
     - customer_name (string or null)
     - phone (string or null)
     - address (string or null)
     - books (một LIST các object, mỗi object có 'title' và 'quantity').
-
-    **QUAN TRỌNG:** Nếu tin nhắn mới nhất không đề cập đến tên sách cụ thể (ví dụ: "cuốn đó", "lấy cho mình cuốn đầu tiên", "cuốn nào còn đủ 50 quyển?"), hãy **suy luận tên sách** từ **Ngữ cảnh bổ sung**.
-    
+    **QUAN TRỌNG:** Nếu tin nhắn mới nhất không đề cập đến tên sách cụ thể (ví dụ: "cuốn đó", "lấy cho mình cuốn đầu tiên"), hãy **suy luận tên sách** từ **Ngữ cảnh bổ sung**.
     JSON:
     """
     info_response = model.generate_content(extract_prompt)
@@ -181,24 +165,17 @@ def handle_ordering(user_input, order_state, chat_history, last_query_result):
         if extracted_info.get("phone"): order_state["phone"] = extracted_info["phone"]
         if extracted_info.get("address"): order_state["address"] = extracted_info["address"]
 
-        ## SỬA LỖI: Logic cập nhật giỏ hàng thông minh để chống trùng lặp
         if extracted_info.get("books"):
             for new_book in extracted_info.get("books"):
                 requested_title = new_book.get("title")
                 requested_qty = extract_quantity_from_text(new_book.get("quantity"))
-
                 if not requested_title: continue
-
                 found_in_cart = False
-                # Kiểm tra xem sách mới có phải là cập nhật cho sách cũ không
                 for cart_item in order_state["cart"]:
-                    # Dùng 'in' để khớp 'lập trình' với 'Lập trình Python...'
                     if requested_title.lower() in cart_item.get("title", "").lower():
                         cart_item["quantity"] = requested_qty
                         found_in_cart = True
                         break
-                
-                # Nếu không phải là cập nhật, thêm mới vào giỏ
                 if not found_in_cart:
                     order_state["cart"].append({"title": requested_title, "quantity": requested_qty})
 
@@ -217,21 +194,15 @@ def handle_ordering(user_input, order_state, chat_history, last_query_result):
         return "Xin lỗi, không thể kết nối tới kho sách lúc này."
     db_titles = [row[0] for row in all_titles_res['data']]
 
-    SCORE_THRESHOLD = 75 # Ngưỡng điểm tương đồng (từ 0-100)
+    SCORE_THRESHOLD = 75
 
     for item in order_state["cart"]:
         item_title_lower = item['title'].lower().strip()
-        
-        # Sử dụng extractOne để tìm kết quả khớp nhất
         best_match = process.extractOne(item_title_lower, db_titles, score_cutoff=SCORE_THRESHOLD)
-        
-        # Nếu không tìm thấy kết quả nào đủ tốt
         if not best_match:
             return f"Xin lỗi, không tìm thấy sách nào có tên giống '{item['title']}' trong kho. Bạn vui lòng kiểm tra lại chính tả nhé."
 
-        # Lấy tên sách chính xác từ kết quả tìm được
         found_title = best_match[0]
-
         res = execute_sql_query("SELECT price, stock FROM Books WHERE title = ?", (found_title,))
         price, stock = res["data"][0]
         qty = item["quantity"]
@@ -269,88 +240,3 @@ def handle_ordering(user_input, order_state, chat_history, last_query_result):
 
 def handle_reconsider_order(user_input, order_state):
     return "Dạ em hiểu ạ. Không biết mình muốn giảm số lượng hay tìm một cuốn sách khác có giá tốt hơn ạ?"
-
-def main():
-    chat_history = []
-    order_state = {
-        "cart": [], "customer_name": None, "phone": None,
-        "address": None, "confirming": False, "total_price": 0
-    }
-    
-    # Tạo trí nhớ ngắn hạn
-    last_query_result = None
-
-    def reset_order_state():
-        return {
-            "cart": [], "customer_name": None, "phone": None,
-            "address": None, "confirming": False, "total_price": 0
-        }
-
-    print("Book store xin chào! Gõ 'q' để kết thúc.")
-    while True:
-        user_input = input("You: ")
-        if user_input.lower() == "q":
-            print("See you later!")
-            break
-
-        if order_state.get("confirming"):
-            intent = classify_intent(user_input, chat_history)
-            print(f"DEBUG (Confirming): Intent -> {intent}")
-
-            if intent == "confirm_order":
-                print("Chatbot: Đang xử lý đơn hàng của bạn ...")
-                try:
-                    for item in order_state['cart']:
-                        res = execute_sql_query("SELECT book_id FROM Books WHERE title = ?", (item['actual_title'],))
-                        book_id = res["data"][0][0]
-                        insert_sql = "INSERT INTO Orders (customer_name, phone, address, book_id, quantity, status) VALUES (?, ?, ?, ?, ?, ?)"
-                        params = (
-                            order_state["customer_name"], order_state["phone"], order_state["address"],
-                            book_id, item["quantity"], "Pending"
-                        )
-                        execute_sql_query(insert_sql, params)
-                    
-                    for item in order_state['cart']:
-                        update_sql = "UPDATE Books SET stock = stock - ? WHERE title = ?"
-                        execute_sql_query(update_sql, (item['quantity'], item['actual_title']))
-                    
-                    final_answer = "Đặt hàng thành công! Tồn kho đã được cập nhật. Cảm ơn bạn đã mua sách."
-                    order_state = reset_order_state()
-
-                except Exception as e:
-                    final_answer = f"Xin lỗi, đã có lỗi xảy ra khi xử lý đơn hàng: {e}"
-                    order_state = reset_order_state()
-
-            elif intent == "edit_order":
-                order_state["confirming"] = False
-                final_answer = handle_ordering(user_input, order_state, chat_history, last_query_result)
-            else:
-                order_state = reset_order_state()
-                final_answer = "Đã hủy đơn hàng. Tôi có thể giúp gì khác cho bạn không?"
-
-        else:
-            intent = classify_intent(user_input, chat_history)
-            print(f"DEBUG: Intent -> {intent}")
-            if intent == "chitchat":
-                final_answer = handle_chitchat(user_input)
-                last_query_result = None # Xóa bộ nhớ tra cứu khi chitchat
-            elif intent == "query_books":
-                ## <<< THAY ĐỔI CÁCH GỌI VÀ LƯU KẾT QUẢ
-                final_answer, sql_result = handle_query_books(user_input, chat_history)
-                if sql_result and "error" not in sql_result:
-                    last_query_result = sql_result
-            elif intent == "reconsider_order":
-                final_answer = handle_reconsider_order(user_input, order_state)
-            elif intent in ["order_book", "edit_order", "confirm_order"]:
-                 ## <<< THAY ĐỔI CÁCH GỌI
-                final_answer = handle_ordering(user_input, order_state, chat_history, last_query_result)
-            else:
-                final_answer = "Xin lỗi, tôi chưa hiểu ý của bạn. Bạn muốn hỏi về sách, đặt hàng hay trò chuyện?"
-
-        print(f"Chatbot: {final_answer}")
-        chat_history.append({"role": "user", "parts": [user_input]})
-        chat_history.append({"role": "model", "parts": [final_answer]})
-
-
-if __name__ == "__main__":
-    main()
