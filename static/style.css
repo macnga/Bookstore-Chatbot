@@ -1,24 +1,28 @@
 /* static/style.css */
 
-body {
+/* THAY ĐỔI 1: Reset lại margin mặc định của trình duyệt */
+html, body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+    height: 100%;
+    width: 100%;
     margin: 0;
+    overflow: hidden; /* Tránh xuất hiện thanh cuộn không cần thiết */
 }
 
 #chat-container {
-    width: 450px;
-    height: 600px;
-    border: 1px solid #ccc;
-    border-radius: 10px;
+    /* THAY ĐỔI 2: Kích thước lấp đầy cửa sổ */
+    width: 100vw;
+    height: 100vh;
+    
+    /* THAY ĐỔI 3: Bỏ các thuộc tính không cần thiết cho giao diện toàn màn hình */
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    
     background-color: #fff;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 #chat-header {
@@ -26,8 +30,7 @@ body {
     color: white;
     padding: 15px;
     text-align: center;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
+    flex-shrink: 0; /* Không co lại khi nội dung nhiều */
 }
 
 #chat-header h2 {
@@ -42,13 +45,15 @@ body {
     display: flex;
     flex-direction: column;
     gap: 15px;
+    background-color: #ffffff;
 }
 
 .message {
-    max-width: 80%;
+    max-width: 70%; /* Tăng chiều rộng tối đa của tin nhắn một chút */
     padding: 10px 15px;
     border-radius: 18px;
-    line-height: 1.4;
+    line-height: 1.5; /* Tăng khoảng cách dòng cho dễ đọc */
+    word-wrap: break-word; /* Đảm bảo từ dài không làm vỡ layout */
 }
 
 .user-message {
@@ -67,32 +72,40 @@ body {
 
 .message p {
     margin: 0;
-    white-space: pre-wrap; /* Giúp xuống dòng cho \n */
+    white-space: pre-wrap;
 }
 
-
+/* THAY ĐỔI 4: Giới hạn chiều rộng và căn giữa khu vực nhập liệu cho đẹp hơn trên màn hình lớn */
 #chat-form {
     display: flex;
     padding: 15px;
-    border-top: 1px solid #ccc;
+    border-top: 1px solid #ddd;
+    background-color: #f7f7f7;
+    flex-shrink: 0;
+    width: 100%;
+    max-width: 900px; /* Giới hạn chiều rộng tối đa */
+    margin: 0 auto; /* Căn giữa */
+    box-sizing: border-box; /* Đảm bảo padding không làm tăng kích thước */
 }
 
 #user-input {
     flex-grow: 1;
     border: 1px solid #ccc;
-    padding: 10px;
-    border-radius: 20px;
+    padding: 12px;
+    border-radius: 25px;
     margin-right: 10px;
+    font-size: 1em;
 }
 
 #chat-form button {
     background-color: #007bff;
     color: white;
     border: none;
-    padding: 10px 20px;
-    border-radius: 20px;
+    padding: 12px 22px;
+    border-radius: 25px;
     cursor: pointer;
     transition: background-color 0.2s;
+    font-size: 1em;
 }
 
 #chat-form button:hover {
