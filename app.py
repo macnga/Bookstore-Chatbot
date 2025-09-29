@@ -9,21 +9,25 @@ import chatbot as bot
 load_dotenv()
 
 app = Flask(__name__)
-# Cần một SECRET_KEY để sử dụng session
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'a_default_secret_key_for_development')
 
-# Route chính để hiển thị giao diện chat
 @app.route("/")
 def index():
     # Khởi tạo session cho người dùng mới
     if "chat_history" not in session:
-        session["chat_history"] = []
+        # <<< BẮT ĐẦU THAY ĐỔI
+        initial_message = "Book store xin chào! Tôi có thể giúp gì cho bạn?"
+        session["chat_history"] = [{"role": "model", "parts": [initial_message]}]
+        # KẾT THÚC THAY ĐỔI >>>
+        
         session["order_state"] = {
             "cart": [], "customer_name": None, "phone": None,
             "address": None, "confirming": False, "total_price": 0
         }
         session["last_query_result"] = None
-    return render_template("index.html")
+        
+    # Luôn truyền lịch sử chat cho template để hiển thị
+    return render_template("index.html", chat_history=session["chat_history"])
 
 # Route API để xử lý tin nhắn chat
 @app.route("/chat", methods=["POST"])
@@ -108,3 +112,4 @@ def chat():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
