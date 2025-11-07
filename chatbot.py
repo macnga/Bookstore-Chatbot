@@ -1,16 +1,3 @@
-```python name=chatbot.py url=https://github.com/macnga/Bookstore-Chatbot/blob/main/chatbot.py
-# chatbot.py
-# Updated to:
-# - Use OpenAI Python client.
-# - Use gpt-3.5-turbo for internal tasks (intent classification, SQL generation, JSON extraction).
-# - Use gpt-4o-mini for final responses that are printed to users.
-#
-# Notes:
-# - Ensure OPENAI_API_KEY is set in environment.
-# - Each DB access opens its own sqlite3 connection (connection-per-call) to be thread-safe.
-# - All OpenAI calls go through call_chat_model helper which uses the OpenAI client.
-# - Timeouts and basic error handling added; tune as needed.
-
 import os
 import sqlite3
 import json
@@ -430,3 +417,4 @@ def handle_reconsider_order(user_input, order_state):
         return resp or "Dạ, bạn muốn thay đổi điều gì trong đơn hàng ạ?"
     except Exception:
         return "Dạ, bạn muốn thay đổi điều gì trong đơn hàng ạ?"
+
