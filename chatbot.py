@@ -1,17 +1,21 @@
 # chatbot_logic.py
 
 import sqlite3
-import google.generativeai as genai
 import json
 import re
 import os
 from thefuzz import process
 
-# Lấy API key từ biến môi trường
-GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
-genai.configure(api_key=GOOGLE_API_KEY)
+from openai import OpenAI
 
-model = genai.GenerativeModel("models/gemini-2.5-flash")
+# Lấy API key từ biến môi trường
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Khởi tạo client OpenAI
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+# Chọn model (bạn có thể thay bằng gpt-4o-mini, gpt-5, v.v.)
+MODEL_NAME = "gpt-4o-mini"
 
 def execute_sql_query(sql_query, params=()):
     conn = sqlite3.connect("bookstore.db")
@@ -240,3 +244,4 @@ def handle_ordering(user_input, order_state, chat_history, last_query_result):
 
 def handle_reconsider_order(user_input, order_state):
     return "Dạ em hiểu ạ. Không biết mình muốn giảm số lượng hay tìm một cuốn sách khác có giá tốt hơn ạ?"
+
