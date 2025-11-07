@@ -1,6 +1,7 @@
 Flask
-google-generativeai
+openai
 thefuzz
 python-Levenshtein
 gunicorn
 python-dotenv
+
