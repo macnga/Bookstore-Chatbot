@@ -1,7 +1,11 @@
 Flask
 openai
-thefuzz
+rapidfuzz
+unidecode
 python-Levenshtein
 gunicorn
 python-dotenv
-
+torch>=2.4.0
+transformers>=4.40.0
+accelerate>=0.30.0
+scikit-learn>=1.5.0
