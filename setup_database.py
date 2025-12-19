@@ -1,6 +1,6 @@
 # UPDATE 19.12.2025
 # Add a tbale named OrderDetails - detail_id, order_id, book_id, quantity, price_at_purchase
-# Remodify the Orders table - order_id, customer_name, phone, address, total_amount, create_at
+# Remodify the Orders table - order_id, customer_name, phone, address, total_amount, status, create_at
 
 
 import sqlite3
@@ -111,3 +111,4 @@ def init_db():
 
 if __name__ == "__main__":
     init_db()
+
