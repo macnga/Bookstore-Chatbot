@@ -1,7 +1,7 @@
 # Lưu trữ thông tin chung và nội dung prompt
 import os
 
-GOOGLE_API_KEY = "AIzaSyBnyG7Nzvb89_Nr4r-tYgXuEVYHt5upVqg"
+GOOGLE_API_KEY = os.getenv(GOOGLE_API_KEY)
 DB_PATH = '.\\bookstore.db'
 
 STORE_INFO = """
