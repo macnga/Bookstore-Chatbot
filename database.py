@@ -1,4 +1,6 @@
 # Xây dựng các hàm xử lý sau khi phân loại để lấy data đưa vào nlg - gen response
+#version - 25.12.2025
+# add data_str into history
 
 import sqlite3
 import datetime
@@ -215,12 +217,72 @@ def cleaning_timeout_order(timeout_min = 2):
         count = 0
         if timeouts:
             for row in timeouts:
-                if cancel_restock(row['oder_id'], reason='timeout'):
+                if cancel_restock(row['order_id'], reason='timeout'):
                     count += 1
         return count
     except Exception as e:
         print(f"Error when Cleaning Up: {e}")
         return 0
+
+def purge_old_orders(days = 5):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    count = 0
+    try:
+        cursor.execute("""
+                SELECT order_id FROM Orders
+                WHERE create_at < datetime('now'    , '-{days} days', 'localtime')
+        """)
+        rows = cursor.fetchall()
+
+        if not rows:
+            return 0
+
+        ids_to_delete = [str(r['order_id']) for r in rows]
+        ids_str = ",".join(ids_to_delete) # Ví dụ: "1,2,5"
+
+        # 2. Xóa chi tiết đơn hàng trước (OrderDetails)
+        cursor.execute(f"DELETE FROM OrderDetails WHERE order_id IN ({ids_str})")
+        
+        # 3. Xóa đơn hàng (Orders)
+        cursor.execute(f"DELETE FROM Orders WHERE order_id IN ({ids_str})")
+        
+        count = cursor.rowcount
+        conn.commit()
+    except Exception as e:
+        print(f"❌ Error purge_old_orders: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
+    return count
+
+def format_books_for_history(books):
+    if not books: return None
+
+    simplified_books = []
+    for b in books:
+        simplified_books.append({
+            "book_id": b['book_id'],
+            "title": b['title'],
+            "author": b['author'],
+            "price": b['price'],
+            "category": b['category']
+        })
+    return json.dumps({"books": simplified_books}, ensure_ascii=False)
+
+def format_orders_for_history(orders):
+    if not orders: return None
+    simplified_orders = []
+    for o in orders:
+        simplified_orders.append({
+            "order_id": o['order_id'],
+            "total_amount": o['total_amount'],
+            "status": o['status'],
+            "create_at": o['create_at'],
+            "items_summary": o['items_summary']
+        })
+    return json.dumps({"orders": simplified_orders}, ensure_ascii=False)
 
 def revive_order_transaction(order_id):
     conn = get_connection()
@@ -267,7 +329,7 @@ def get_order_by_phone(phone):
     FROM Orders O
     JOIN OrderDetails OD ON O.order_id = OD.order_id
     JOIN Books B ON OD.book_id = B.book_id
-    WHERE O.phone = ?
+    WHERE O.phone = ? AND O.status != 'cancel' AND O.status != 'confirming'
     GROUP BY O.order_id
     ORDER BY O.create_at DESC
     LIMIT 5
