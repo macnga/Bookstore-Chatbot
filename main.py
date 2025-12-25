@@ -6,6 +6,7 @@ import sys
 import config
 import json
 import os
+import search_engine
 
 
 SESSION_TIMEOUT = 600
@@ -270,18 +271,16 @@ def run_bot(user_id, user_input):
             for item in raw_items:
                 kw = item.get('book')
                 if kw:
-                    results = database.search_book(kw, limit=5)
+                    results = database.search_book(kw, limit=50)
                     all_found_books.extend(results)
 
     #---------------------AUTHOR OF BOOKS--------------------
         if author_kws:
             for aut in author_kws:
-                all_found_books.extend(database.search_book(aut, limit=5))
+                all_found_books.extend(database.search_book(aut, limit=50))
         if cat_kws:
             for cat in cat_kws:
-                all_found_books.extend(database.search_book(cat, limit=5))
-        if not all_found_books:
-            all_found_books = database.search_book(None, limit=5)  
+                all_found_books.extend(database.search_book(cat, limit=50))
 
         unique_books = []
         seen_ids = set()
@@ -289,6 +288,25 @@ def run_bot(user_id, user_input):
             if b['book_id'] not in seen_ids:
                 unique_books.append(b)
                 seen_ids.add(b['book_id'])
+
+        count = len(unique_books)
+        if count == 0 or count > 5:
+            if count == 0:
+                print("Không tìm thấy sách phù hợp. --> semantic")
+            if count > 5:
+                print("Tìm thấy quá nhiều sách phù hợp. --> semantic")
+            query_parts = []
+            for item in raw_items:
+                if item.get('book'): query_parts.append(item.get('book'))
+            if cat_kws: query_parts.extend(cat_kws)
+
+            semantic_query = ". Nội dung: ".join(query_parts).strip()
+            if not semantic_query:
+                semantic_query = user_input
+            unique_books = search_engine.search_semantic(semantic_query, limit=5)
+
+        if not unique_books:
+            unique_books = database.search_book(None, limit=5)  
         bot_response = nlg.generate_response(user_input, history, unique_books, intent)
         if unique_books:
             context_to_save = database.format_books_for_history(unique_books)
@@ -329,7 +347,15 @@ if __name__ == "__main__":
     
     print("------------Tiệm sách của Nga nè------------")
     current_user = "user_demo_v3"
-
+    print("------------Tiệm sách của Nga nè------------")
+    current_user = "user_demo_v3"
+    print("------------------------------------------------")
+    print("🚀 Đang khởi động hệ thống tìm kiếm thông minh...")
+    if search_engine.load_resource():
+        print("✅ Semantic Search: Sẵn sàng!")
+    else:
+        print("⚠️ Semantic Search: Không hoạt động (Sẽ dùng tìm kiếm thường).")
+    print("------------------------------------------------")
     while True:
         try:
             txt = input('\nUSER: ')
