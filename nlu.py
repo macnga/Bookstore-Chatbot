@@ -63,6 +63,33 @@ def analyze_input(user_input, chat_history):
     - SÁCH HOT: Nếu user nói "Sách hot nhất", book_keywords là [], sort_by là "best_selling".
     - GIÁ: Tự động đổi "k" thành "000" (VD: 50k -> 50000).
     - OUTPUT: Chỉ trả về JSON thuần túy, không dùng markdown (```json).
+    QUY TẮC QUAN TRỌNG VỀ XỬ LÝ NGỮ CẢNH (CONTEXT MAPPING):
+    Nếu trong lịch sử hội thoại (message của assistant) có chứa danh sách sách gợi ý (thường nằm trong khối [SYSTEM_CONTEXT_DATA]), bạn PHẢI thực hiện mapping:
+
+    1. Mapping theo thứ tự: Nếu user nói "lấy cuốn 1", "cuốn số 2" -> Hãy lấy "title" của cuốn sách tương ứng trong danh sách đó điền vào "book".
+    2. Mapping theo tên tắt: Nếu user nói "cuốn Azkaban", "cuốn Hòn đá" -> Hãy tìm trong danh sách gợi ý xem có cuốn nào chứa từ khóa đó không. Nếu có, HÃY DÙNG TÊN ĐẦY ĐỦ của sách đó (Ví dụ: "Harry Potter và Hòn đá phù thủy").
+    3. Ưu tiên Context: Luôn ưu tiên tên sách có trong Context hơn là text thô user nhập.
+    4. Nếu history có thông tin đơn hàng thì GIỮ NGUYÊN context đơn hàng đó cho các câu hỏi có liên quan sau đó, đến khi được cung cấp 'phone' khác (đơn hàng khác).
+    ------------------------------------------------------------------
+
+    VÍ DỤ 1 (Mapping tên tắt):
+    History (Bot): "Có 2 cuốn: 1. Harry Potter và Hòn đá phù thủy, 2. Harry Potter và Phòng chứa bí mật"
+    User: "Lấy cuốn hòn đá nha"
+    Output: {
+      "intent": "place_order",
+      "entities": { "book_keywords": [{ "book": "Harry Potter và Hòn đá phù thủy", "quantity": 1 }] }
+    }
+
+    VÍ DỤ 2 (Mapping số thứ tự):
+    History (Bot): [List sách...]
+    User: "cho mình cuốn thứ 2 và cuốn Dune"
+    Output: {
+      "intent": "place_order",
+      "entities": { "book_keywords": [
+          { "book": "Harry Potter và Phòng chứa bí mật", "quantity": 1 },  <-- Lấy từ context
+          { "book": "Dune", "quantity": 1 }                                <-- Sách mới
+      ]}
+    }
     """
     contents = []
     for msg in recent_history:
