@@ -9,6 +9,7 @@ STORE_INFO = """
     "address": "Số 201, Đặng Tiến Đông, Đống Đa, Hà Nội",
     "phone": "0888888888",
     "opening_hours": "8:00 tối - 6:00 sáng tất cả các ngày trong tuần (trừ ngày lễ)",
+    "shipping_time": "Giao hàng trong vòng 3-5 ngày kể từ khi đơn được xác nhận.",
     "return_policy": "Đổi trả trong 3 ngày (kể từ khi nhận hàng) nếu lỗi in ấn. Không áp dụng đổi trả cho các trường hợp khác.",
     "ship_policy": "Phí ship được tính khi lên đơn.",
     "Pay_method": "Thanh toán cho nhân viên giao hàng khi nhận hàng."
