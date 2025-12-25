@@ -32,7 +32,7 @@ def normalize_text(text):
 # Thực hiện search theo ký tự với title, author và category
 #-----------------------------------------------------------
 
-def search_book(user_keyword, limit=5, threshold = 60):
+def search_book(user_keyword, limit=5, threshold = 80):
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -358,4 +358,17 @@ def admin_update_status(order_id, new_status):
 
     return f"Updated order {order_id} into status - {new_status}!"
 
-    
+def get_book_by_id(book_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM Books WHERE book_id = ?", (book_id,))
+        row = cursor.fetchone()
+        if row:
+            return dict(row)
+        return None
+    except Exception as e:
+        print(f"❌ Error get_book_by_id: {e}")
+        return None
+    finally:
+        conn.close()
