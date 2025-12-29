@@ -1,3 +1,6 @@
+#Version 29.12.2025
+#Add semantic search for category in intent 'search_book' and 'recommend_book'
+
 import nlg
 import nlu
 import database
@@ -290,26 +293,20 @@ def run_bot(user_id, user_input):
                 seen_ids.add(b['book_id'])
 
         count = len(unique_books)
-        if count == 0 or count > 5:
-            if count == 0:
-                print("Không tìm thấy sách phù hợp. --> semantic")
-            if count > 5:
-                print("Tìm thấy quá nhiều sách phù hợp. --> semantic")
-            query_parts = []
-            for item in raw_items:
-                if item.get('book'): query_parts.append(item.get('book'))
-            if cat_kws: query_parts.extend(cat_kws)
-
-            semantic_query = ". Nội dung: ".join(query_parts).strip()
-            if not semantic_query:
-                semantic_query = user_input
-            unique_books = search_engine.search_semantic(semantic_query, limit=5)
-
-        if not unique_books:
-            unique_books = database.search_book(None, limit=5)  
-        bot_response = nlg.generate_response(user_input, history, unique_books, intent)
-        if unique_books:
-            context_to_save = database.format_books_for_history(unique_books)
+        if count > 5:
+            print("🔍 (5) Running Semantic Rerank...")
+            final_results = search_engine.rerank_books(user_input, unique_books, limit=5)
+        elif count == 0:
+            print("🔍 (0) Running Semantic Search Fallback...")
+            final_results = search_engine.search_semantic(user_input, limit=5)
+        else:
+            print(f"🔍 ({count}) Using Direct Search Results.")
+            final_results = unique_books
+        if not final_results:
+            final_results = database.search_book(None, limit=5)  
+        bot_response = nlg.generate_response(user_input, history, final_results, intent)
+        if final_results:
+            context_to_save = database.format_books_for_history(final_results)
 #------------------
 # CHECK ORDERS STATUS
 #---------------------------------------------------
