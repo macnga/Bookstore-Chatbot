@@ -1,4 +1,5 @@
 # Thực hiện phân loại intent và trích xuất các thông tin cần thiết
+#Version 29.12.2025 - Add entity confirm để xác định ý định khi đưa đơn confirming
 
 import json
 import os
@@ -38,6 +39,7 @@ def analyze_input(user_input, chat_history):
         * name (string): Tên khách hàng
         * phone (string): Số điện thoại
         * address (string): Địa chỉ nhận hàng
+    - confirm (string/null): "yes" | "no" | "refine" (Dùng khi khách xác nhận, chỉnh sửa hoặc từ chối đơn hàng)
 
     VÍ DỤ MẪU:
     User: "shop có nhà giả kim không?"
