@@ -10,9 +10,10 @@ import os
 client = None
 book_vectors = None
 book_ids = None
+id_to_index_map = {}
 
 def load_resource():
-    global client, book_vectors, book_ids
+    global client, book_vectors, book_ids, id_to_index_map
 
     if not os.path.exists("book_embeddings.pkl"):
         print("❌ Embedding file not found. Please run build_embedding.py first.")
@@ -65,3 +66,41 @@ def search_semantic(query, limit=5, threshold=0.3):
     except Exception as e:
         print(f"❌ Semantic Search Error: {e}")
         return []
+
+
+def rerank_books(query, candidate_books, limit=5):
+    global clinet, book_vectors, id_to_index_map
+    if not candidate_books: return []
+
+    if client is None: load_resource()
+
+    try:
+        subset_vectors = []
+        valid_candidates = []
+        for book in candidate_books:
+            bid = book['book_id']
+            for bid in id_to_index_map:
+                idx = id_to_index_map[bid]
+                subset_vectors.append(book_vectors[idx])
+                valid_candidates.append(book)
+        if not valid_candidates:
+            return candidate_books[:limit]
+
+        response = client.models.embed_content(
+                model = 'text-embedding-004',
+                contents = query,
+                config = types.EmbedContentConfig(task_type='RETRIEVAL_QUERY')
+        )
+        query_vec = np.array(response.embeddings[0].values).reshape(1, -1)
+        subset_vectors_np = np.array(subset_vectors)
+        scores = cosine_similarity(query_vec, subset_vectors_np)[0]
+        ranked_results = []
+        for i, book in enumerate(valid_candidates):
+            book['score'] = scores[i]
+            ranked_results.append(book)
+        ranked_results.sort(key=lambda x: x['score'], reverse=True)
+        return ranked_results[:limit]
+    except Exception as e:
+        print(f"Rerank Error: {e}')
+        return candidate_books[:limit]
+        
