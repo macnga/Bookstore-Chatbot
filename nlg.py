@@ -44,7 +44,7 @@ def generate_response(user_input, data_context, intent):
             contents=user_input,
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
-                temperature=0.7
+                temperature=0.5 #Mức độ sáng tạo của chatbot
             )
         )
         return response.text
